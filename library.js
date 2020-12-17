@@ -11,6 +11,48 @@ var defaultSettings = { title: 'Recent Topics', opacity: '1.0', textShadow: 'non
 var plugin = module.exports;
 var app;
 
+function parse (text) {
+	if (!text) return text
+  
+	let matches = text.match(/-=[^\0]+?=-|~\[[^\0]+?\]~(?:\([\w\d:,# ]*?\))?/gm) || []
+  
+	if (matches.length === 0) return text
+  
+	let returnText = '';
+  
+	matches.forEach(matchedString => {
+	  let matchedParts
+	  let matchedContent
+	  let matchedOptions
+	  let unsafe = false
+	  let characters
+  
+	  let options = {
+		range: 0,
+		colors: [],
+		bgcolor: '',
+		mirror: false
+	  }
+	  console.log(matchedString);
+	  if (matchedString.match(/^-=/)) {
+		unsafe = true
+		matchedParts = matchedString.slice(2, matchedString.length - 2)
+		matchedParts = matchedParts.match(/^(?:\(([\w\d:,# ]+?)\))?(.*)$/m)
+		matchedContent = matchedParts[2]
+		matchedOptions = matchedParts[1]
+		// console.log(matchedContent, matchedOptions, ' -  - - ');
+	  } else {
+		matchedParts = matchedString.slice(1)
+		matchedParts = matchedParts.match(/^\[([^\0]+?)\]~(?:\(([\w\d:,# ]*?)\))?$/m)
+		matchedContent = matchedParts[1]
+		matchedOptions = matchedParts[2]
+		// console.log(matchedContent, matchedOptions);
+	  }
+	  returnText += matchedContent;
+	})
+	return returnText;
+  }
+
 plugin.init = function(params, callback) {
 	app = params.app;
 	const router = params.router;
@@ -19,9 +61,9 @@ plugin.init = function(params, callback) {
 	router.get('/admin/plugins/recentcards', middleware.admin.buildHeader, renderAdmin);
 	router.get('/api/admin/plugins/recentcards', renderAdmin);
 
-	router.get('/plugins/nodebb-plugin-recent-cards/render', renderExternal);
-	router.get('/plugins/nodebb-plugin-recent-cards/render/style.css', renderExternalStyle);
-	router.get('/admin/plugins/nodebb-plugin-recent-cards/tests/external', testRenderExternal);
+	router.get('/plugins/nodebb-plugin-recent-cards-niuniu/render', renderExternal);
+	router.get('/plugins/nodebb-plugin-recent-cards-niuniu/render/style.css', renderExternalStyle);
+	router.get('/admin/plugins/nodebb-plugin-recent-cards-niuniu/tests/external', testRenderExternal);
 
 	plugin.settings = new settings('recentcards', '1.0.0', defaultSettings);
 
@@ -48,7 +90,7 @@ plugin.defineWidgets = function(widgets, callback) {
 		name: "Recent Cards",
 		description: "Recent topics carousel",
 	};
-	app.render('admin/plugins/nodebb-plugin-recent-cards/widget', {}, function (err, html) {
+	app.render('admin/plugins/nodebb-plugin-recent-cards-niuniu/widget', {}, function (err, html) {
 		if (err) {
 			return callback(err);
 		}
@@ -70,8 +112,15 @@ plugin.getConfig = async function (config) {
 },
 
 plugin.renderWidget = async function(widget) {
-	const topics = await getTopics(widget.uid, widget.data.cid || widget.templateData.cid || 0);
-	widget.html = await app.renderAsync('partials/nodebb-plugin-recent-cards/header', {
+	const _topics = await getTopics(widget.uid, widget.data.cid || widget.templateData.cid || 0);
+	let topics = _topics.map(topic => {
+		if(topic.title) {
+			topic.title = parse(topic.title);
+		}
+		return topic;
+	});
+
+	widget.html = await app.renderAsync('partials/nodebb-plugin-recent-cards-niuniu/header', {
 		topics: topics,
 		config: {
 			relative_path: nconf.get('relative_path'),
@@ -93,18 +142,18 @@ function renderExternal(req, res, next) {
 			relative_path: nconf.get('url')
 		};
 
-		res.render('partials/nodebb-plugin-recent-cards/header', data.templateData);
+		res.render('partials/nodebb-plugin-recent-cards-niuniu/header', data.templateData);
 	});
 }
 
 function renderExternalStyle(req, res, next) {
-	res.render('partials/nodebb-plugin-recent-cards/external/style', {
+	res.render('partials/nodebb-plugin-recent-cards-niuniu/external/style', {
 		forumURL: nconf.get('url')
 	});
 }
 
 function testRenderExternal(req, res, next) {
-	res.render('admin/plugins/nodebb-plugin-recent-cards/tests/external', {
+	res.render('admin/plugins/nodebb-plugin-recent-cards-niuniu/tests/external', {
 		forumURL: nconf.get('url')
 	});
 }
